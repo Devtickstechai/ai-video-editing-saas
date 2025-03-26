@@ -124,3 +124,5 @@ def protected_route(token: str = Depends(oauth2_scheme), db: Session = Depends(g
 @app.get("/")
 def read_root():
     return {"message": "FastAPI authentication system is running!"}
+
+# ✅ Health Check Route
