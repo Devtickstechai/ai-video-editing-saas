@@ -13,56 +13,131 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
+/* 🔹 Ensure body doesn't restrict styling */
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: inherit;
+  display: block;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* 🔹 Center the form */
+.form-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
+/* 🔹 Modern Glassmorphism Form */
+.form-box {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(15px);
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 450px;
+  text-align: center; /* Center text */
+}
+
+/* 🔹 Title and Login Link */
+.form-box h2 {
+  font-size: 2rem;
+  font-weight: bold;
+  color: black;
+  margin-bottom: 1rem;
+}
+
+.form-box p {
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* 🔹 Labels */
+.form-box label {
+  font-size: 1rem;
   font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  color: black;
+  display: block;
+  margin-bottom: 6px;
+  text-align: left;
 }
 
+/* 🔹 Input Fields */
+.form-box input {
+  width: 80%; /* Reduced width */
+  padding: 12px;
+  font-size: 1rem;
+  color: black;
+  background: rgba(169, 50, 50, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.3s ease-in-out;
+  text-align: center; /* Center input text */
+  display: block;
+  margin: 0 auto; /* Center align */
+}
+
+/* 🔹 Spacing Between Inputs */
+.input-group {
+  margin-bottom: 15px;
+}
+
+/* 🔹 Input Focus & Hover */
+.form-box input:focus {
+  border-color: #646cff;
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 10px rgba(100, 108, 255, 0.5);
+}
+
+
+/* Ensure Placeholder Text is Visible */
+.form-box input::placeholder {
+  color: rgba(0, 0, 0, 0.6); /* ✅ Change placeholder color to dark gray */
+  opacity: 1; /* ✅ Ensure visibility in some browsers */
+}
+
+/* 🔹 Submit Button */
+button {
+  width: 80%;
+  padding: 12px;
+  font-size: 1.2em;
+  border-radius: 8px;
+  background: linear-gradient(45deg, #646cff, #535bf2);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-top: 10px;
+}
+
+button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(100, 108, 255, 0.3);
+}
+
+/* 🔹 Light Mode */
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;
   }
-  a:hover {
-    color: #747bff;
+
+  .form-box {
+    background: rgba(255, 255, 255, 0.9);
   }
+
+  .form-box input {
+    color: #04213a;
+    background: rgba(175, 245, 180, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+  }
+
   button {
-    background-color: #f9f9f9;
+    background: linear-gradient(45deg, #747bff, #213547);
   }
 }
