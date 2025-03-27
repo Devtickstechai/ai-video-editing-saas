@@ -1,15 +1,25 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 import jwt
 from datetime import datetime, timedelta
+from fastapi.middleware.cors import CORSMiddleware
 
 from .database import get_db
 from .models import User
 
 app = FastAPI()
+
+# CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Secret keys for JWT
 SECRET_KEY = "1234554321"
@@ -33,11 +43,17 @@ class TokenRefresh(BaseModel):
 
 class UserRegister(BaseModel):
     username: str
+    email: EmailStr
+    password: str
+
+class LoginRequest(BaseModel):
+    email: EmailStr
     password: str
 
 class UserResponse(BaseModel):
     id: int
     username: str
+    email: str
 
     class Config:
         orm_mode = True
@@ -63,12 +79,15 @@ def create_refresh_token(data: dict):
 # ✅ User Registration Endpoint
 @app.post("/register", response_model=UserResponse)
 def register(user: UserRegister, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.username == user.username).first()
+    existing_user = db.query(User).filter(
+        (User.username == user.username) | (User.email == user.email)
+    ).first()
+    
     if existing_user:
-        raise HTTPException(status_code=400, detail="Username already exists")
+        raise HTTPException(status_code=400, detail="Username or email already exists")
 
     hashed_password = hash_password(user.password)
-    new_user = User(username=user.username, hashed_password=hashed_password)
+    new_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
     
     db.add(new_user)
     db.commit()
@@ -76,15 +95,15 @@ def register(user: UserRegister, db: Session = Depends(get_db)):
 
     return new_user
 
-# ✅ Login Endpoint (Changed from `/token` to `/login`)
+# ✅ Login Endpoint (Accepting JSON)
 @app.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+def login(user_data: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == user_data.email).first()
+    if not user or not verify_password(user_data.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
-    access_token = create_access_token({"sub": user.username}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    refresh_token = create_refresh_token({"sub": user.username})
+    access_token = create_access_token({"sub": user.email}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    refresh_token = create_refresh_token({"sub": user.email})
     
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
 
@@ -93,10 +112,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 def refresh_access_token(token_data: TokenRefresh):
     try:
         payload = jwt.decode(token_data.refresh_token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
+        email: str = payload.get("sub")
 
-        new_access_token = create_access_token({"sub": username}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-        new_refresh_token = create_refresh_token({"sub": username})
+        new_access_token = create_access_token({"sub": email}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+        new_refresh_token = create_refresh_token({"sub": email})
 
         return {"access_token": new_access_token, "refresh_token": new_refresh_token, "token_type": "bearer"}
     except jwt.ExpiredSignatureError:
@@ -104,13 +123,13 @@ def refresh_access_token(token_data: TokenRefresh):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
 
-# ✅ Protected Route (Requires Valid Access Token)
+# ✅ Protected Route
 @app.get("/protected")
 def protected_route(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        user = db.query(User).filter(User.username == username).first()
+        email: str = payload.get("sub")
+        user = db.query(User).filter(User.email == email).first()
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     except jwt.ExpiredSignatureError:
@@ -118,9 +137,22 @@ def protected_route(token: str = Depends(oauth2_scheme), db: Session = Depends(g
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-    return {"message": f"Hello, {username}! You have access to this route."}
+    return {"message": f"Hello, {user.username}! You have access to this route."}
 
-# ✅ Root Route
+# ✅ Home Route (Protected)
 @app.get("/")
-def read_root():
-    return {"message": "FastAPI authentication system is running!"}
+def root_route(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        user = db.query(User).filter(User.email == email).first()
+
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+        return {"message": f"Welcome to the Home Page, {user.username}!"}
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
